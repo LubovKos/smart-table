@@ -1,7 +1,4 @@
-import {createComparison, defaultRules} from "../lib/compare.js";
-
-// Настройка компаратора
-const compare = createComparison(defaultRules);
+import {createComparison, defaultRules, rules} from "../lib/compare.js";
 
 export function initFiltering(elements, indexes) {
     // Заполнение выпадающих списков опциями
@@ -18,6 +15,15 @@ export function initFiltering(elements, indexes) {
         }
     });
 
+    // Создаем компаратор с правилами, включая arrayAsRange
+    const compare = createComparison([
+        'skipNonExistentSourceFields',
+        'skipEmptyTargetValues',
+        'arrayAsRange',  // Это правило нужно для диапазонов
+        'stringIncludes',
+        'exactEquality'
+    ]);
+
     return (data, state, action) => {
         // Обработка очистки поля
         if (action && action.name === 'clear') {
@@ -26,11 +32,25 @@ export function initFiltering(elements, indexes) {
             
             if (input) {
                 input.value = '';
-                state[`searchBy${field.charAt(0).toUpperCase() + field.slice(1)}`] = '';
+                // Очищаем соответствующее поле в state
+                if (field === 'date') {
+                    state.searchByDate = '';
+                } else if (field === 'customer') {
+                    state.searchByCustomer = '';
+                }
             }
+            return data; // Возвращаем данные без фильтрации, чтобы показать все строки
         }
 
+        // Подготавливаем состояние для сравнения с диапазонами
+        const filterState = {
+            date: state.searchByDate || '',
+            customer: state.searchByCustomer || '',
+            seller: state.searchBySeller || '',
+            total: [state.totalFrom || '', state.totalTo || ''] // Диапазон для total
+        };
+
         // Фильтрация данных с использованием компаратора
-        return data.filter(row => compare(row, state));
+        return data.filter(row => compare(row, filterState));
     }
 }
