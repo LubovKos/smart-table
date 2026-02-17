@@ -3,30 +3,34 @@ import {sortCollection, sortMap} from "../lib/sort.js";
 export function initSorting(columns) {
     return (data, state, action) => {
         let field = null;
-        let order = null;
+        let order = 'none';
 
         if (action && action.name === 'sort') {
-            // Запоминаем выбранный режим сортировки
-            action.dataset.value = sortMap[action.dataset.value];
+            // Если кликнули по кнопке сортировки:
+            // 1. Переключаем состояние (none -> up -> down -> none)
+            const nextOrder = sortMap[action.dataset.value];
+            action.dataset.value = nextOrder;
+            
+            // 2. Запоминаем текущие параметры для сортировки ПРЯМО СЕЙЧАС
             field = action.dataset.field;
-            order = action.dataset.value;
+            order = nextOrder;
 
-            // Сбрасываем сортировки остальных колонок
+            // 3. Сбрасываем остальные колонки
             columns.forEach(column => {
-                if (column.dataset.field !== action.dataset.field) {
+                if (column !== action) {
                     column.dataset.value = 'none';
                 }
             });
         } else {
-            // Получаем выбранный режим сортировки при обычной перерисовке
-            columns.forEach(column => {
-                if (column.dataset.value !== 'none') {
-                    field = column.dataset.field;
-                    order = column.dataset.value;
-                }
-            });
+            // Если это просто перерисовка (например, поиск), ищем активную колонку
+            const activeColumn = columns.find(column => column.dataset.value !== 'none');
+            if (activeColumn) {
+                field = activeColumn.dataset.field;
+                order = activeColumn.dataset.value;
+            }
         }
 
+        // Применяем сортировку
         return sortCollection(data, field, order);
     }
 }

@@ -1,56 +1,62 @@
-import {createComparison, defaultRules, rules} from "../lib/compare.js";
+import {createComparison, defaultRules} from "../lib/compare.js";
 
 export function initFiltering(elements, indexes) {
-    // Заполнение выпадающих списков опциями
+    // 1. Заполнение выпадающих списков
+    // Проходим по ключам переданных индексов (например, 'seller')
     Object.keys(indexes).forEach(elementName => {
-        if (elements[elementName]) {
-            elements[elementName].append(
-                ...Object.values(indexes[elementName]).map(name => {
-                    const option = document.createElement('option');
-                    option.value = name;
-                    option.textContent = name;
-                    return option;
-                })
-            );
+        const select = elements[elementName];
+        if (select) {
+            // Очищаем и добавляем дефолтную опцию
+            select.innerHTML = '';
+            const defaultOption = document.createElement('option');
+            defaultOption.value = '';
+            defaultOption.textContent = '—';
+            select.append(defaultOption);
+
+            // Добавляем опции из данных
+            Object.values(indexes[elementName]).forEach(value => {
+                const option = document.createElement('option');
+                option.value = value;
+                option.textContent = value;
+                select.append(option);
+            });
         }
     });
 
-    // Создаем компаратор с правилами, включая arrayAsRange
-    const compare = createComparison([
-        'skipNonExistentSourceFields',
-        'skipEmptyTargetValues',
-        'arrayAsRange',  // Это правило нужно для диапазонов
-        'stringIncludes',
-        'exactEquality'
-    ]);
+    // 2. Создаем компаратор на основе стандартных правил
+    const compare = createComparison(defaultRules);
 
     return (data, state, action) => {
-        // Обработка очистки поля
+        // 3. Обработка кнопки очистки (крестик в поле ввода)
         if (action && action.name === 'clear') {
-            const field = action.dataset.field;
-            const input = action.closest('.filter-wrapper').querySelector('input');
+            const fieldName = action.dataset.field; // например 'date' или 'customer'
+            // Находим input в том же контейнере
+            const wrapper = action.closest('.filter-wrapper');
+            const input = wrapper ? wrapper.querySelector('input') : null;
             
             if (input) {
-                input.value = '';
-                // Очищаем соответствующее поле в state
-                if (field === 'date') {
-                    state.searchByDate = '';
-                } else if (field === 'customer') {
-                    state.searchByCustomer = '';
-                }
+                input.value = ''; // Визуальная очистка
+                state[fieldName] = ''; // Логическая очистка для текущего рендера
             }
-            return data; // Возвращаем данные без фильтрации, чтобы показать все строки
         }
 
-        // Подготавливаем состояние для сравнения с диапазонами
-        const filterState = {
-            date: state.searchByDate || '',
-            customer: state.searchByCustomer || '',
-            seller: state.searchBySeller || '',
-            total: [state.totalFrom || '', state.totalTo || ''] // Диапазон для total
-        };
+        // 4. Подготовка данных для сравнения
+        // Нам нужно преобразовать поля 'totalFrom' и 'totalTo' в формат,
+        // который понимает правило arrayAsRange ([from, to]) и который совпадает с ключом в данных ('total')
+        const filterState = { ...state };
+        
+        if (filterState.totalFrom || filterState.totalTo) {
+            filterState.total = [
+                filterState.totalFrom, 
+                filterState.totalTo
+            ];
+            // Удаляем исходные поля, чтобы правило skipNonExistentSourceFields не блокировало проверку
+            // так как в данных (row) нет полей totalFrom/totalTo
+            delete filterState.totalFrom;
+            delete filterState.totalTo;
+        }
 
-        // Фильтрация данных с использованием компаратора
+        // 5. Фильтрация
         return data.filter(row => compare(row, filterState));
     }
 }
