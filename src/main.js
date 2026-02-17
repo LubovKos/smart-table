@@ -11,12 +11,17 @@ import {initSorting} from "./components/sorting.js";
 import {initFiltering} from "./components/filtering.js";
 import {initSearching} from "./components/searching.js";
 
+// Исходные данные
 const {data, ...indexes} = initData(sourceData);
 
+/**
+ * Сбор и обработка полей из таблицы
+ * @returns {Object}
+ */
 function collectState() {
     const state = processFormData(new FormData(sampleTable.container));
     
-    // ВАЖНО: Приводим к числам, иначе пагинация сломается (строка "1" + 1 = "11")
+    // ВАЖНО: Приводим значения к числам, иначе пагинация будет работать со строками ("1" + 1 = "11")
     const rowsPerPage = parseInt(state.rowsPerPage || 10);
     const page = parseInt(state.page || 1);
 
@@ -27,30 +32,35 @@ function collectState() {
     };
 }
 
+/**
+ * Перерисовка состояния таблицы
+ * @param {HTMLButtonElement?} action
+ */
 function render(action) {
     let state = collectState();
     let result = [...data];
-
-    // Порядок применения важен:
-    // 1. Глобальный поиск (Search)
-    // 2. Фильтрация по колонкам (Filter)
-    // 3. Сортировка (Sort)
-    // 4. Пагинация (Pagination) - применяется последней, чтобы резать уже готовый список
+    
+    // Применяем модули в правильном порядке:
+    // 1. Поиск (отсеивает лишнее по тексту)
+    // 2. Фильтрация (отсеивает по колонкам)
+    // 3. Сортировка (упорядочивает)
+    // 4. Пагинация (режет на страницы)
     result = applySearching(result, state, action);
     result = applyFiltering(result, state, action);
     result = applySorting(result, state, action);
     result = applyPagination(result, state, action);
 
-    sampleTable.render(result);
+    sampleTable.render(result)
 }
 
 const sampleTable = initTable({
     tableTemplate: 'table',
     rowTemplate: 'row',
-    // Подключаем шаблоны поиска, заголовка и фильтров перед таблицей
     before: ['search', 'header', 'filter'],
     after: ['pagination']
 }, render);
+
+// Инициализация модулей
 
 const applyPagination = initPagination(
     sampleTable.pagination.elements,
@@ -70,10 +80,12 @@ const applySorting = initSorting([
 ]);
 
 const applyFiltering = initFiltering(sampleTable.filter.elements, {
-    seller: indexes.sellers // Важно: имя поля в indexes должно совпадать с name в html (seller)
+    // ВАЖНО: Ключ здесь должен совпадать с data-name в HTML шаблоне 'filter'
+    // В index.html это <select ... data-name="searchBySeller">
+    searchBySeller: indexes.sellers
 });
 
-const applySearching = initSearching('search'); // Поле, откуда берем строку поиска
+const applySearching = initSearching('search'); // data-name поля поиска
 
 const appRoot = document.querySelector('#app');
 appRoot.appendChild(sampleTable.container);

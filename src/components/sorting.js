@@ -6,23 +6,27 @@ export function initSorting(columns) {
         let order = 'none';
 
         if (action && action.name === 'sort') {
-            // Если кликнули по кнопке сортировки:
-            // 1. Переключаем состояние (none -> up -> down -> none)
+            // Если событие вызвано кликом по кнопке сортировки
+            
+            // 1. Вычисляем следующее состояние по кругу (none -> up -> down -> none)
             const nextOrder = sortMap[action.dataset.value];
+            
+            // 2. Обновляем DOM атрибут нажатой кнопки
             action.dataset.value = nextOrder;
             
-            // 2. Запоминаем текущие параметры для сортировки ПРЯМО СЕЙЧАС
+            // 3. Запоминаем параметры для текущей сортировки
             field = action.dataset.field;
             order = nextOrder;
 
-            // 3. Сбрасываем остальные колонки
+            // 4. Сбрасываем состояние остальных кнопок сортировки
             columns.forEach(column => {
                 if (column !== action) {
                     column.dataset.value = 'none';
                 }
             });
         } else {
-            // Если это просто перерисовка (например, поиск), ищем активную колонку
+            // Если это обычная перерисовка (например, при фильтрации),
+            // находим активную колонку сортировки, если она есть
             const activeColumn = columns.find(column => column.dataset.value !== 'none');
             if (activeColumn) {
                 field = activeColumn.dataset.field;

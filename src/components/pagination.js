@@ -1,13 +1,15 @@
 import {getPages} from "../lib/utils.js";
 
 export const initPagination = ({pages, fromRow, toRow, totalRows}, createPage) => {
-    // Сохраняем шаблон кнопки страницы и очищаем контейнер
+    // Сохраняем шаблон кнопки и очищаем контейнер
     const pageTemplate = pages.firstElementChild.cloneNode(true);
-    pages.replaceChildren(); // Очищаем полностью
+    pages.replaceChildren();
 
     return (data, state, action) => {
+        // Убеждаемся, что работаем с числами
         const rowsPerPage = Number(state.rowsPerPage);
-        const pageCount = Math.ceil(data.length / rowsPerPage) || 1; // Защита от деления на 0
+        // Вычисляем количество страниц, минимум 1
+        const pageCount = Math.ceil(data.length / rowsPerPage) || 1;
         let page = Number(state.page);
 
         // Обработка навигации
@@ -28,22 +30,20 @@ export const initPagination = ({pages, fromRow, toRow, totalRows}, createPage) =
             }
         }
 
-        // Если после фильтрации страниц стало меньше, чем текущая - сбрасываем
+        // Если после фильтрации текущая страница вышла за пределы, возвращаем на последнюю
         if (page > pageCount) page = pageCount;
 
-        // Рендеринг кнопок страниц
-        const visiblePages = getPages(page, pageCount, 5); // Показываем 5 кнопок
+        // Рендерим кнопки страниц
+        const visiblePages = getPages(page, pageCount, 5);
         
         const pageElements = visiblePages.map(pageNumber => {
             const el = pageTemplate.cloneNode(true);
-            // createPage заполняет input и span значениями
             return createPage(el, pageNumber, pageNumber === page);
         });
         
         pages.replaceChildren(...pageElements);
 
-        // Обновление текстовой статистики (1-10 of 50)
-        // Если данных нет, пишем 0
+        // Обновляем статистику
         const currentTotal = data.length;
         if (currentTotal > 0) {
             fromRow.textContent = (page - 1) * rowsPerPage + 1;
@@ -54,7 +54,7 @@ export const initPagination = ({pages, fromRow, toRow, totalRows}, createPage) =
         }
         totalRows.textContent = currentTotal;
 
-        // Возвращаем "срезанный" кусок данных
+        // Возвращаем данные для текущей страницы
         const skip = (page - 1) * rowsPerPage;
         return data.slice(skip, skip + rowsPerPage);
     }
