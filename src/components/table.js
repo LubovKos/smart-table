@@ -33,6 +33,8 @@ export function initTable(settings, onAction) {
     });
 
     root.container.addEventListener('reset', () => {
+        const sortButtons = root.container.querySelectorAll('button[name="sort"]');
+        sortButtons.forEach(btn => btn.dataset.value = 'none');
         setTimeout(() => onAction(), 0);
     });
 
@@ -41,12 +43,17 @@ export function initTable(settings, onAction) {
         onAction(e.submitter);
     });
 
+    root.container.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter' && e.target.tagName === 'INPUT') {
+            e.preventDefault(); 
+            e.target.blur();   
+        }
+    });
+
     const render = (data) => {
-        // Преобразование данных в массив строк на основе шаблона
         const nextRows = data.map(item => {
             const row = cloneTemplate(rowTemplate);
-            
-            // Заполняем ячейки данными
+        
             Object.keys(item).forEach(key => {
                 if (row.elements[key]) {
                     row.elements[key].textContent = item[key];

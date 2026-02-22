@@ -1,39 +1,32 @@
 import {getPages} from "../lib/utils.js";
 
 export const initPagination = ({pages, fromRow, toRow, totalRows}, createPage) => {
-    // Сохраняем шаблон кнопки и очищаем контейнер
     const pageTemplate = pages.firstElementChild.cloneNode(true);
     pages.replaceChildren();
+    
+    let pageCount; 
 
-    return (data, state, action) => {
-        // Убеждаемся, что работаем с числами
-        const rowsPerPage = Number(state.rowsPerPage);
-        // Вычисляем количество страниц, минимум 1
-        const pageCount = Math.ceil(data.length / rowsPerPage) || 1;
+    const applyPagination = (query, state, action) => {
+        const limit = Number(state.rowsPerPage);
         let page = Number(state.page);
 
-        // Обработка навигации
         if (action) {
             switch(action.name) {
-                case 'prev': 
-                    page = Math.max(1, page - 1); 
-                    break;
-                case 'next': 
-                    page = Math.min(pageCount, page + 1); 
-                    break;
-                case 'first': 
-                    page = 1; 
-                    break;
-                case 'last': 
-                    page = pageCount; 
-                    break;
+                case 'prev': page = Math.max(1, page - 1); break;
+                case 'next': page = Math.min(pageCount || 1, page + 1); break;
+                case 'first': page = 1; break;
+                case 'last': page = pageCount || 1; break;
             }
         }
 
-        // Если после фильтрации текущая страница вышла за пределы, возвращаем на последнюю
+        return Object.assign({}, query, { limit, page });
+    };
+
+    const updatePagination = (total, { page, limit }) => {
+        pageCount = Math.ceil(total / limit) || 1;
+        
         if (page > pageCount) page = pageCount;
 
-        // Рендерим кнопки страниц
         const visiblePages = getPages(page, pageCount, 5);
         
         const pageElements = visiblePages.map(pageNumber => {
@@ -43,19 +36,15 @@ export const initPagination = ({pages, fromRow, toRow, totalRows}, createPage) =
         
         pages.replaceChildren(...pageElements);
 
-        // Обновляем статистику
-        const currentTotal = data.length;
-        if (currentTotal > 0) {
-            fromRow.textContent = (page - 1) * rowsPerPage + 1;
-            toRow.textContent = Math.min(page * rowsPerPage, currentTotal);
+        if (total > 0) {
+            fromRow.textContent = (page - 1) * limit + 1;
+            toRow.textContent = Math.min(page * limit, total);
         } else {
             fromRow.textContent = 0;
             toRow.textContent = 0;
         }
-        totalRows.textContent = currentTotal;
+        totalRows.textContent = total;
+    };
 
-        // Возвращаем данные для текущей страницы
-        const skip = (page - 1) * rowsPerPage;
-        return data.slice(skip, skip + rowsPerPage);
-    }
+    return { applyPagination, updatePagination };
 }
